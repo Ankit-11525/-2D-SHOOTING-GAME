@@ -187,6 +187,32 @@ class Enemy {
     }
 };
 
+
+// -----------------Creating particle class
+class Particle {
+    // use of class to avoid define similar object 
+    constructor(x, y, radius, color, velocity) {
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.color = color;
+        this.velocity = velocity;
+    }
+    draw() {
+        context.beginPath();
+        context.arc(this.x, this.y, this.radius, (Math.PI / 180) * 0, (Math.PI / 180) * 360, 0);
+        context.fillStyle = this.color;
+        //add color to the player
+        // context.stroke();
+
+        context.fill();
+    }
+    update() {
+        this.draw();
+        this.x += this.velocity.x,
+            this.y += this.velocity.y
+    }
+};
 // ----------------main logic here---------------------------
 
 
@@ -195,6 +221,7 @@ const ankit = new Player(PlayerPosition.x, PlayerPosition.y, 20, "white");
 // ankit.draw();
 const weapons = [];
 const enemies = [];
+const particles=[];
 
 
 //---------------function to spawn enemies at random location-------------------------------------
@@ -203,8 +230,8 @@ const spawnEnemy = () => {
     // -------------- generating  random size for enemy
     const enemySize = Math.random() * (40 - 5) + 5;
     // generating  random color for enemy
-    const enemyColor = `rgb(${Math.random() * 250},${Math.random() * 250},${Math.random() * 250})`;
-    
+    const enemyColor = `hsl(${Math.random()*360},100%,50%)`;
+// hsl :higher saturated lighter colors 0->360
 
     // random is enemy spawn position
     let random;
@@ -265,26 +292,101 @@ const spawnEnemy = () => {
 
 
 //------------------creating animation function
+let animationid;
 function animation() {
     //making recursion
-    requestAnimationFrame(animation);
+    animationid = requestAnimationFrame(animation);
+    context.fillStyle="rgba(49,49,49,0.2)";
+    // using this some path prints is left out when new rect with less obesity is put on another  
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    
+
 
     // clearing canvas on each frames
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    // context.clearRect(0, 0, canvas.width, canvas.height);
     // to clear whole screen with size of rect before creating another beam
-    
-    
+
+
     //drawing player
     ankit.draw();
 
 
     // generating bullets
-    weapons.forEach(weapon => {
+    weapons.forEach((weapon,weaponIndex) => {
         weapon.update();
+
+
+        // removing weapons if they are off screen
+        if(
+            weapon.x+weapon.radius<1 ||
+            weapon.y+weapon.radius<1 ||
+            weapon.x-weapon.radius>canvas.width ||
+            weapon.y-weapon.radius>canvas.height
+            )
+        {
+            // console.log("yes : ",weapons.length);
+            weapons.splice(weaponIndex,1);
+        }
+
     });
     // generating enemies
-    enemies.forEach(enemy => {
+    enemies.forEach((enemy, enemyIndex) => {
         enemy.update();
+
+        // finding distance between player and enemy
+        const DistanceBetweenPlayerAndEnemy = Math.hypot
+            (
+                ankit.x - enemy.x,
+                ankit.y - enemy.y
+            );
+        // stopping game if enemy hit player
+        if (DistanceBetweenPlayerAndEnemy - ankit.radius - enemy.radius < 1) {
+            // console.log("GameOver");
+            cancelAnimationFrame(animationid);
+        }
+
+        weapons.forEach((weapon, weaponIndex) => {
+
+            // finding distance between weapon and enemy
+            const DistanceBetweenWeaponAndEnemy = Math.hypot
+                (
+                    weapon.x - enemy.x,
+                    weapon.y - enemy.y
+                );
+            if (DistanceBetweenWeaponAndEnemy - weapon.radius - enemy.radius < 1) {
+                // console.log("kill enemy");
+
+
+
+                // for(l)
+
+
+
+
+
+
+                if(enemy.radius>18)
+                {
+                    // 18 choosed because of 18-10  that is 8 not very small for next attack
+                    gsap.to(enemy,{
+                        radius:enemy.radius-10,
+                    })
+                    //using gsap smooth look to reducing the size of enemies
+                }
+                //removing enemy on hit their size below <18
+                else{
+                    setTimeout(() => {
+                        enemies.splice(enemyIndex, 1);
+                        weapons.splice(weaponIndex, 1);
+                    },0);
+                }
+
+
+
+                
+
+            }
+        });
     });
 }
 
@@ -313,8 +415,8 @@ canvas.addEventListener("click", (e) => {
 
     // making cnst speed for light weapon
     const velocity = {
-        x: Math.cos(myAngle) * 5,  // multiply more to get more speed ,  used for velocity
-        y: Math.sin(myAngle) * 5
+        x: Math.cos(myAngle) * 6,  // multiply more to get more speed ,  used for velocity
+        y: Math.sin(myAngle) * 6
     }; //object
     // console.log(myAngle);
 
@@ -323,7 +425,7 @@ canvas.addEventListener("click", (e) => {
 
 
 
-// adding light weapons array
+    // adding light weapons array
     weapons.push(
         new Weapon(
             canvas.width / 2, // yaha se create and niklega 
