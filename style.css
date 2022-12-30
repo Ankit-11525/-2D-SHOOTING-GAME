@@ -77,4 +77,5 @@ form>select:hover {
 form>input:hover {
     background-color: rgb(194, 27, 91);
     box-shadow: 0 0 10px white;
+    
 }
