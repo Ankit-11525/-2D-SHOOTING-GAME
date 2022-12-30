@@ -1,0 +1,9 @@
+canvas{
+    background-color: rgb(49,49,49);
+    max-width: 100%;  
+    /* to cover whole area */
+}
+*{
+    padding: 0;
+    margin: 0;
+}
