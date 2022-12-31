@@ -4,12 +4,15 @@ document.querySelector(".myGame").appendChild(canvas);
 canvas.width = innerWidth;
 canvas.height = innerHeight;
 const context = canvas.getContext("2d");
-
+const lightWeaponDamage = 10;
+const HeavyWeaponDamage = 20;
+const HugeWeaponDamage = 50;
+let highScore = 0;
 
 let difficulty = 2;
 const form = document.querySelector("form");
 const scoreBoard = document.querySelector(".scoreBoard");
-
+let playerScore = 0;
 
 
 // Basic Functions
@@ -31,25 +34,49 @@ document.querySelector("input").addEventListener("click", (e) => {
     // alert(userValue);
     if (userValue === "Easy") {
         setInterval(spawnEnemy, 2000);
-        return (difficulty = 5);
+        return (difficulty = 3);
     }
     if (userValue === "Medium") {
-        setInterval(spawnEnemy, 1500);
-        return (difficulty = 8);
+        setInterval(spawnEnemy, 1700);
+        return (difficulty = 5);
 
     }
     if (userValue === "Hard") {
-        setInterval(spawnEnemy, 1000);
-        return (difficulty = 10);
+        setInterval(spawnEnemy, 1500);
+        return (difficulty = 7);
 
     }
     if (userValue === "Insane") {
-        setInterval(spawnEnemy, 700);
-        return (difficulty = 12);
+        setInterval(spawnEnemy, 1000);
+        return (difficulty = 9);
 
     }
 });
 
+// EndScreen 
+const gameoverLoader = () => {
+    // creating endscreen div and play again button and high score element
+    // const gameOverBanner=document.createElement("div");
+    const gameOverBanner = document.querySelector(".gameOverBanner");
+    gameOverBanner.style.display = "flex";
+    document.querySelector(".YourScore").innerHTML = `YourScore : ${playerScore
+        }`;
+    const oldHighScore =
+        localStorage.getItem("highScore") && localStorage.getItem("highScore");
+    if (oldHighScore < playerScore) {
+        localStorage.setItem("highScore", playerScore);
+    }
+    const highScore = document.querySelector(".highScore");
+    highScore.innerHTML = `HighScore : ${localStorage.getItem("highScore")
+        ? localStorage.getItem("highScore")
+        : playerScore
+        }`;
+
+    const gameoverbtn = document.querySelector(".gameOverBtn");
+    gameoverbtn.addEventListener("click", () => {
+        window.location.reload();
+    });
+};
 
 
 
@@ -132,12 +159,13 @@ class Player {
 // ----------------------for Weapons----------------//
 class Weapon {
     // use of class to avoid define similar object 
-    constructor(x, y, radius, color, velocity) {
+    constructor(x, y, radius, color, velocity, damage) {
         this.x = x;
         this.y = y;
         this.radius = radius;
         this.color = color;
         this.velocity = velocity;
+        this.damage = damage;
     }
     draw() {
         context.beginPath();
@@ -145,7 +173,7 @@ class Weapon {
         context.fillStyle = this.color;
         //add color to the player
         // context.stroke();
-
+        context.fillStyle = this.color;
         context.fill();
     }
     update() {
@@ -156,7 +184,27 @@ class Weapon {
 };
 
 
-
+// ----------------------for huge Weapons----------------//
+class HugeWeapon {
+    // use of class to avoid define similar object 
+    constructor(x, y, damage) {
+        this.x = x;
+        this.y = y;
+        this.color = "rgba(47,255,0,1)";
+        this.damage = damage;
+    }
+    draw() {
+        context.beginPath();
+        //add color to the weapon
+        context.fillStyle = this.color;
+        context.fillRect(this.x, this.y, 100, canvas.height);
+    }
+    update() {
+        this.draw();
+        this.x += 20;
+        // this.y += 10;
+    }
+};
 
 
 //-------------------------for enemy-------------->
@@ -189,6 +237,7 @@ class Enemy {
 
 
 // -----------------Creating particle class
+const fraction = 0.98;
 class Particle {
     // use of class to avoid define similar object 
     constructor(x, y, radius, color, velocity) {
@@ -197,8 +246,11 @@ class Particle {
         this.radius = radius;
         this.color = color;
         this.velocity = velocity;
+        this.alpha = 1;
     }
     draw() {
+        context.save();
+        context.globalAlpha = this.alpha;
         context.beginPath();
         context.arc(this.x, this.y, this.radius, (Math.PI / 180) * 0, (Math.PI / 180) * 360, 0);
         context.fillStyle = this.color;
@@ -206,11 +258,16 @@ class Particle {
         // context.stroke();
 
         context.fill();
+        context.restore();
     }
     update() {
         this.draw();
+        this.velocity.x *= fraction;
+        this.velocity.y *= fraction;
         this.x += this.velocity.x,
-            this.y += this.velocity.y
+            this.y += this.velocity.y,
+            this.alpha -= 0.01;
+
     }
 };
 // ----------------main logic here---------------------------
@@ -221,8 +278,8 @@ const ankit = new Player(PlayerPosition.x, PlayerPosition.y, 20, "white");
 // ankit.draw();
 const weapons = [];
 const enemies = [];
-const particles=[];
-
+const particles = [];
+const hugeweapons = [];
 
 //---------------function to spawn enemies at random location-------------------------------------
 const spawnEnemy = () => {
@@ -230,8 +287,8 @@ const spawnEnemy = () => {
     // -------------- generating  random size for enemy
     const enemySize = Math.random() * (40 - 5) + 5;
     // generating  random color for enemy
-    const enemyColor = `hsl(${Math.random()*360},100%,50%)`;
-// hsl :higher saturated lighter colors 0->360
+    const enemyColor = `hsl(${Math.random() * 360},100%,50%)`;
+    // hsl :higher saturated lighter colors 0->360
 
     // random is enemy spawn position
     let random;
@@ -252,7 +309,7 @@ const spawnEnemy = () => {
         };
     }
     else {
-        random = {
+        random = "#FF2511", {
             x: Math.random() * canvas.width,
             y: Math.random() < 0.5 ? canvas.height
                 + enemySize : 0 - enemySize,
@@ -296,10 +353,15 @@ let animationid;
 function animation() {
     //making recursion
     animationid = requestAnimationFrame(animation);
-    context.fillStyle="rgba(49,49,49,0.2)";
+
+    // rendering player score in score board html element
+    scoreBoard.innerHTML = `Score : ${playerScore}`
+
+
+    context.fillStyle = "rgba(49,49,49,0.2)";
     // using this some path prints is left out when new rect with less obesity is put on another  
     context.fillRect(0, 0, canvas.width, canvas.height);
-    
+
 
 
     // clearing canvas on each frames
@@ -311,21 +373,47 @@ function animation() {
     ankit.draw();
 
 
+
+    // genrating particles -----------
+    particles.forEach((particle, particleIndex) => {
+        if (particle.alpha <= 0) {
+            particles.splice(particleIndex, 1);
+        }
+        else {
+            particle.update();
+        }
+
+
+    });
+
+
+    // Generating Huge Weapons
+    hugeweapons.forEach((hugeweapon, hugeweaponIndex) => {
+        if (hugeweapon.x > canvas.width) {
+            hugeweapons.splice(hugeweaponIndex, 1);
+        }
+        else {
+            hugeweapon.update();
+        }
+
+    });
+    // console.log(hugeweapons);
+
+
     // generating bullets
-    weapons.forEach((weapon,weaponIndex) => {
+    weapons.forEach((weapon, weaponIndex) => {
         weapon.update();
 
 
         // removing weapons if they are off screen
-        if(
-            weapon.x+weapon.radius<1 ||
-            weapon.y+weapon.radius<1 ||
-            weapon.x-weapon.radius>canvas.width ||
-            weapon.y-weapon.radius>canvas.height
-            )
-        {
+        if (
+            weapon.x + weapon.radius < 1 ||
+            weapon.y + weapon.radius < 1 ||
+            weapon.x - weapon.radius > canvas.width ||
+            weapon.y - weapon.radius > canvas.height
+        ) {
             // console.log("yes : ",weapons.length);
-            weapons.splice(weaponIndex,1);
+            weapons.splice(weaponIndex, 1);
         }
 
     });
@@ -343,8 +431,21 @@ function animation() {
         if (DistanceBetweenPlayerAndEnemy - ankit.radius - enemy.radius < 1) {
             // console.log("GameOver");
             cancelAnimationFrame(animationid);
+            return gameoverLoader();
         }
 
+        hugeweapons.forEach((hugeweapon) => {
+            const DistanceBetweenHugeWeaponAndEnemy = hugeweapon.x - enemy.x;
+            if (DistanceBetweenHugeWeaponAndEnemy <= 100 && DistanceBetweenHugeWeaponAndEnemy >= -100) {
+                playerScore += 10;
+                setTimeout(() => {
+                    enemies.splice(enemyIndex, 1);
+                }, 0);
+                // console.log("finsh");
+            }
+
+        });
+        // console.log(playerScore);
         weapons.forEach((weapon, weaponIndex) => {
 
             // finding distance between weapon and enemy
@@ -357,33 +458,42 @@ function animation() {
                 // console.log("kill enemy");
 
 
-
-                // for(l)
-
-
-
-
-
-
-                if(enemy.radius>18)
-                {
+                if (enemy.radius > weapon.damage + 8) {  // pehle yaha 18 tha
                     // 18 choosed because of 18-10  that is 8 not very small for next attack
-                    gsap.to(enemy,{
-                        radius:enemy.radius-10,
+                    gsap.to(enemy, {
+                        radius: enemy.radius - weapon.damage,
                     })
+                    setTimeout(() => {
+                        weapons.splice(weaponIndex, 1);
+                    }, 0);
                     //using gsap smooth look to reducing the size of enemies
                 }
                 //removing enemy on hit their size below <18
-                else{
+                else {
+                    for (let i = 0; i < enemy.radius * 5; i++) {
+                        particles.push(
+                            new Particle(
+                                weapon.x, weapon.y,
+                                Math.random() * 2, enemy.color,
+                                {
+                                    x: (Math.random() - 0.5) * (Math.random() * 7),
+                                    y: (Math.random() - 0.5) * (Math.random() * 7),
+                                }))
+                    }
+
+                    // /playerscore increase by 10;
+                    playerScore += 10;
+                    // rendering player score in score board html element
+                    scoreBoard.innerHTML = `Score : ${playerScore}`
                     setTimeout(() => {
                         enemies.splice(enemyIndex, 1);
                         weapons.splice(weaponIndex, 1);
-                    },0);
+                    }, 0);
                 }
 
 
 
-                
+
 
             }
         });
@@ -432,11 +542,87 @@ canvas.addEventListener("click", (e) => {
             canvas.height / 2,
             6,
             "white",
-            velocity  //x,y large value . . . .  diff badh jayega y/x angle decide karega
+            velocity, lightWeaponDamage //x,y large value . . . .  diff badh jayega y/x angle decide karega
         )
         // just created new weapons "golis" using clicked x,y coordinates
     );
 });
 
 
+
+
+// event listener for heavy weapon aka right click
+canvas.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    // condition not use less score
+    if (playerScore <= 0) return;
+    // decreasing player score by 2;
+    playerScore -= 2;
+    // same time rendering else it will render after the shoot
+    scoreBoard.innerHTML = `Score : ${playerScore}`;
+
+    // console.log(e.clientX,e.clientY);   
+    // just show the clicked coordinate on canvas by mouse
+
+
+
+    // finding angle between player postion (center) and click co-ordinates
+    const myAngle = Math.atan2(e.clientY - canvas.height / 2, e.clientX - canvas.width / 2);
+
+
+    // making cnst speed for light weapon
+    const velocity = {
+        x: Math.cos(myAngle) * 3.5,  // multiply more to get more speed ,  used for velocity
+        y: Math.sin(myAngle) * 3.5
+    }; //object
+    // console.log(myAngle);
+
+
+
+
+
+
+    // adding heavy weapons array
+    weapons.push(
+        new Weapon(
+            canvas.width / 2, // yaha se create and niklega 
+            canvas.height / 2,
+            30,
+            "cyan",
+            velocity, HeavyWeaponDamage //x,y large value . . . .  diff badh jayega y/x angle decide karega
+        )
+        // just created new weapons "golis" using clicked x,y coordinates
+    );
+});
+
+
+addEventListener("keypress", (e) => {
+    // console.log(`key:${e.key}`);// key btayega
+    if (e.key === " ") {
+        // condition not use less score
+        if (playerScore < 20) return;
+        // decreasing player score by 2;
+        playerScore -= 20;
+        // same time rendering else it will render after the shoot
+        scoreBoard.innerHTML = `Score : ${playerScore}`;
+        hugeweapons.push(
+            new HugeWeapon(
+                0, // yaha se create and niklega 
+                0,
+                HugeWeaponDamage //x,y large value . . . .  diff badh jayega y/x angle decide karega
+            )
+            // just created new weapons "golis" using clicked x,y coordinates
+        );
+        //     console.log("spacebar");
+    }
+
+
+});
+addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+});
+addEventListener("resize", () => {
+    canvas.width=innerWidth;
+    canvas.height=innerHeight;
+});
 animation();
